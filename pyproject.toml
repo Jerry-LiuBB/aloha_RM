@@ -1,0 +1,30 @@
+[build-system]
+requires = ["setuptools", "wheel"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "aloha-rm"
+version = "0.2.0"
+description = "Teleoperation data collection and behavior cloning pipeline for servo leader arm + Realman follower arm"
+readme = "README.md"
+requires-python = ">=3.10"
+dependencies = [
+  "numpy>=1.24",
+  "torch>=2.2",
+  "pyyaml>=6.0",
+  "requests>=2.31",
+]
+
+[tool.setuptools]
+package-dir = {"" = "src"}
+
+[tool.setuptools.packages.find]
+where = ["src"]
+
+[project.optional-dependencies]
+realsense = [
+  "pyrealsense2>=2.54",
+]
+camera = [
+  "opencv-python>=4.8",
+]
