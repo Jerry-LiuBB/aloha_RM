@@ -54,6 +54,8 @@ class CameraConfig:
     device_id: int = 0
     width: int = 160
     height: int = 120
+    fps: int = 30
+    serial_no: str | None = None
 
 
 @dataclass(slots=True)

@@ -32,10 +32,12 @@ training:
 
 camera:
   enabled: false
-  backend: "mock"  # mock | opencv
+  backend: "mock"  # mock | opencv | realsense
   device_id: 0
-  width: 160
-  height: 120
+  width: 640
+  height: 480
+  fps: 30
+  serial_no: null
 
 inference:
   hz: 30

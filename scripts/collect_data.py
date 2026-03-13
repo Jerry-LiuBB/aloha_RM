@@ -4,6 +4,7 @@ import argparse
 
 from aloha_rm.camera.mock_camera import MockCamera
 from aloha_rm.camera.opencv_camera import OpenCVCamera
+from aloha_rm.camera.realsense_camera import RealSenseCamera
 from aloha_rm.config import load_config
 from aloha_rm.follower.realman_client import RealmanClient
 from aloha_rm.leader.servo_leader import ServoLeaderArm
@@ -41,6 +42,13 @@ def main() -> None:
                 device_id=cfg.camera.device_id,
                 width=cfg.camera.width,
                 height=cfg.camera.height,
+            )
+        elif cfg.camera.backend == "realsense":
+            camera = RealSenseCamera(
+                width=cfg.camera.width,
+                height=cfg.camera.height,
+                fps=cfg.camera.fps,
+                serial_no=cfg.camera.serial_no,
             )
         else:
             camera = MockCamera(width=cfg.camera.width, height=cfg.camera.height)
