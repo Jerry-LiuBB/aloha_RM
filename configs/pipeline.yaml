@@ -1,0 +1,41 @@
+realman:
+  host: "192.168.1.18"
+  port: 8080
+  movej_api: "/api/movej"
+  state_api: "/api/joint_state"
+  timeout_s: 1.0
+  success_code: 0
+  joint_state_key: "joint"
+  token: null
+
+leader:
+  joint_count: 6
+  scale: 1.0
+  offset: 0.0
+
+collection:
+  hz: 30
+  max_steps: 600
+  output_dir: "artifacts/datasets"
+  command_speed: 20.0
+  command_acc: 20.0
+
+training:
+  dataset_dir: "artifacts/datasets"
+  model_dir: "artifacts/models"
+  hidden_dim: 256
+  batch_size: 128
+  epochs: 40
+  learning_rate: 0.0003
+  val_split: 0.1
+  seed: 42
+
+camera:
+  enabled: false
+  backend: "mock"  # mock | opencv
+  device_id: 0
+  width: 160
+  height: 120
+
+inference:
+  hz: 30
