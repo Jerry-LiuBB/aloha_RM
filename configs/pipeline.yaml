@@ -19,6 +19,7 @@ collection:
   output_dir: "artifacts/datasets"
   command_speed: 20.0
   command_acc: 20.0
+  dataset_format: "npz" # set to "hdf5" to match mobile-aloha dataset style
 
 training:
   dataset_dir: "artifacts/datasets"
@@ -30,14 +31,13 @@ training:
   val_split: 0.1
   seed: 42
 
+inference:
+  hz: 30
+
+
 camera:
   enabled: false
-  backend: "mock"  # mock | opencv | realsense
-  device_id: 0
+  model: "realsense_d435"
   width: 640
   height: 480
   fps: 30
-  serial_no: null
-
-inference:
-  hz: 30

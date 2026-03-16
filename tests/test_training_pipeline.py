@@ -12,6 +12,10 @@ if importlib.util.find_spec("torch") is None:
 
 import numpy as np
 
+H5PY_AVAILABLE = importlib.util.find_spec("h5py") is not None
+if H5PY_AVAILABLE:
+    import h5py
+
 from aloha_rm.training.dataset import EpisodeDataset
 from aloha_rm.training.train import train_bc
 
@@ -41,3 +45,51 @@ def test_dataset_and_training(tmp_path: Path) -> None:
     )
     assert model_path.exists()
     assert (model_dir / "metrics.json").exists()
+
+
+def test_npz_dataset_with_images(tmp_path: Path) -> None:
+    data_dir = tmp_path / "datasets_img"
+    data_dir.mkdir()
+
+    obs = np.random.randn(8, 6).astype(np.float32)
+    act = np.random.randn(8, 6).astype(np.float32)
+    images = np.random.randint(0, 255, size=(8, 16, 16, 3), dtype=np.uint8)
+    ts = np.linspace(0, 1, 8)
+    img_ts = np.linspace(0, 1, 8)
+
+    np.savez_compressed(
+        data_dir / "ep_img.npz",
+        observations=obs,
+        actions=act,
+        timestamps=ts,
+        images=images,
+        image_timestamps=img_ts,
+    )
+
+    ds = EpisodeDataset(str(data_dir), include_images=True)
+    sample_obs, sample_act = ds[0]
+    assert sample_act.numel() == 6
+    assert sample_obs.numel() == 6 + 16 * 16 * 3
+
+
+def test_hdf5_dataset_loading(tmp_path: Path) -> None:
+    if not H5PY_AVAILABLE:
+        pytest.skip("h5py is not installed in this environment")
+
+    data_dir = tmp_path / "datasets_h5"
+    data_dir.mkdir()
+
+    obs = np.random.randn(16, 6).astype(np.float32)
+    act = (obs * 0.5).astype(np.float32)
+    ts = np.linspace(0, 1, 16)
+    images = np.random.randint(0, 255, size=(16, 8, 8, 3), dtype=np.uint8)
+    with h5py.File(data_dir / "ep1.hdf5", "w") as f:
+        f.create_dataset("observations", data=obs)
+        f.create_dataset("actions", data=act)
+        f.create_dataset("timestamps", data=ts)
+        f.create_dataset("images", data=images)
+
+    ds = EpisodeDataset(str(data_dir))
+    assert len(ds) == 16
+    sample_obs, _ = ds[0]
+    assert sample_obs.numel() == 6 + 8 * 8 * 3

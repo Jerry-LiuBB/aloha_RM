@@ -2,12 +2,10 @@ from __future__ import annotations
 
 import argparse
 
-from aloha_rm.camera.mock_camera import MockCamera
-from aloha_rm.camera.opencv_camera import OpenCVCamera
-from aloha_rm.camera.realsense_camera import RealSenseCamera
 from aloha_rm.config import load_config
 from aloha_rm.follower.realman_client import RealmanClient
 from aloha_rm.leader.servo_leader import ServoLeaderArm
+from aloha_rm.sensors.realsense_camera import RealSenseD435Camera
 from aloha_rm.teleop.collector import EpisodeCollector
 
 
@@ -37,21 +35,9 @@ def main() -> None:
 
     camera = None
     if cfg.camera.enabled:
-        if cfg.camera.backend == "opencv":
-            camera = OpenCVCamera(
-                device_id=cfg.camera.device_id,
-                width=cfg.camera.width,
-                height=cfg.camera.height,
-            )
-        elif cfg.camera.backend == "realsense":
-            camera = RealSenseCamera(
-                width=cfg.camera.width,
-                height=cfg.camera.height,
-                fps=cfg.camera.fps,
-                serial_no=cfg.camera.serial_no,
-            )
-        else:
-            camera = MockCamera(width=cfg.camera.width, height=cfg.camera.height)
+        if cfg.camera.model != "realsense_d435":
+            raise ValueError(f"Unsupported camera model={cfg.camera.model}")
+        camera = RealSenseD435Camera(width=cfg.camera.width, height=cfg.camera.height, fps=cfg.camera.fps)
 
     collector = EpisodeCollector(
         leader,
@@ -65,11 +51,9 @@ def main() -> None:
         cfg.collection.output_dir,
         command_speed=cfg.collection.command_speed,
         command_acc=cfg.collection.command_acc,
+        dataset_format=cfg.collection.dataset_format,
     )
     print(f"saved episode -> {path}")
-
-    if hasattr(camera, "close"):
-        camera.close()
 
 
 if __name__ == "__main__":

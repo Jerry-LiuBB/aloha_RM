@@ -33,6 +33,7 @@ class CollectionConfig:
     output_dir: str
     command_speed: float = 20.0
     command_acc: float = 20.0
+    dataset_format: str = "npz"
 
 
 @dataclass(slots=True)
@@ -50,13 +51,10 @@ class TrainingConfig:
 @dataclass(slots=True)
 class CameraConfig:
     enabled: bool = False
-    backend: str = "mock"
-    device_id: int = 0
-    width: int = 160
-    height: int = 120
+    model: str = "realsense_d435"
+    width: int = 640
+    height: int = 480
     fps: int = 30
-    serial_no: str | None = None
-
 
 @dataclass(slots=True)
 class InferenceConfig:
@@ -69,8 +67,8 @@ class PipelineConfig:
     leader: LeaderConfig
     collection: CollectionConfig
     training: TrainingConfig
-    camera: CameraConfig
     inference: InferenceConfig
+    camera: CameraConfig
 
 
 def _section(raw: dict[str, Any], key: str, default: dict[str, Any] | None = None) -> dict[str, Any]:
@@ -89,6 +87,6 @@ def load_config(path: str | Path) -> PipelineConfig:
         leader=LeaderConfig(**_section(raw, "leader")),
         collection=CollectionConfig(**_section(raw, "collection")),
         training=TrainingConfig(**_section(raw, "training")),
-        camera=CameraConfig(**_section(raw, "camera")),
         inference=InferenceConfig(**_section(raw, "inference")),
+        camera=CameraConfig(**_section(raw, "camera")),
     )

@@ -10,6 +10,7 @@ readme = "README.md"
 requires-python = ">=3.10"
 dependencies = [
   "numpy>=1.24",
+  "h5py>=3.10",
   "torch>=2.2",
   "pyyaml>=6.0",
   "requests>=2.31",
@@ -21,10 +22,8 @@ package-dir = {"" = "src"}
 [tool.setuptools.packages.find]
 where = ["src"]
 
+
 [project.optional-dependencies]
-realsense = [
-  "pyrealsense2>=2.54",
-]
 camera = [
-  "opencv-python>=4.8",
+  "pyrealsense2>=2.55",
 ]

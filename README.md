@@ -5,21 +5,20 @@
 ## 功能总览
 
 - 实时遥操作采集：主动臂读关节角、下发 Realman `movej`、回读关节状态。
-- 支持相机图像采集：每一步可同步保存 RGB 图像到 episode 数据。
-- 支持 **Intel RealSense D435**（`pyrealsense2`）采集 RGB。
-- 数据集产出：`npz`（obs/action/timestamp/command_ok/images）+ `json` 元数据。
+- 可选视觉采集：支持 RealSense D435 RGB 图像采集，并记录图像时间戳。
+- 数据集产出：`npz` 或 `hdf5`（obs/action/timestamp/command_ok，可选 images/image_timestamps）+ `json` 元数据。
 - 训练：行为克隆 MLP，带 train/val 划分和 `metrics.json` 指标导出。
 - 部署：加载模型后按固定频率闭环推理并下发 Realman。
 
 ## 目录
 
-- `scripts/collect_data.py`：采集脚本（含相机采集开关）。
+- `scripts/collect_data.py`：采集脚本。
 - `scripts/train_policy.py`：训练脚本。
 - `scripts/run_policy.py`：策略部署脚本。
 - `src/aloha_rm/follower/realman_client.py`：Realman JSON API 客户端。
 - `src/aloha_rm/leader/servo_leader.py`：主动臂舵机读数接口（你要接入真实硬件）。
-- `src/aloha_rm/camera/`：相机接口（`MockCamera` / `OpenCVCamera` / `RealSenseCamera`）。
-- `src/aloha_rm/teleop/collector.py`：遥操作采集器。
+- `src/aloha_rm/sensors/realsense_camera.py`：RealSense D435 相机封装。
+- `src/aloha_rm/teleop/collector.py`：遥操作采集器（含机械臂+图像时间戳）。
 - `src/aloha_rm/training/`：数据集、模型、训练。
 - `src/aloha_rm/inference/policy_runner.py`：在线策略运行。
 - `configs/pipeline.yaml`：全局配置。
@@ -32,10 +31,10 @@ source .venv/bin/activate
 pip install -e .
 ```
 
-D435 额外依赖（可选）：
+如需 RealSense D435 支持：
 
 ```bash
-pip install pyrealsense2
+pip install -e .[camera]
 ```
 
 ## 配置
@@ -48,11 +47,12 @@ pip install pyrealsense2
 - `realman.token`：如有鉴权可填。
 - `leader.joint_count`：主动臂关节数。
 - `collection.command_speed/command_acc`：下发运动参数。
-- `camera.enabled`：是否记录图像。
-- `camera.backend`：`mock` / `opencv` / `realsense`。
-- `camera.width/height/fps/serial_no`：相机参数（D435 推荐 640x480@30fps）。
+- `collection.dataset_format`：数据集格式，`npz`（默认）或 `hdf5`（与 mobile-aloha 常见格式一致）。
+- `camera.enabled`：是否启用视觉采集/推理。
+- `camera.model`：当前支持 `realsense_d435`。
+- `camera.width/height/fps`：D435 RGB 流参数。
 
-## 1) 采集数据（含图像）
+## 1) 采集数据
 
 ```bash
 python scripts/collect_data.py --episode pick_place_001
@@ -60,25 +60,12 @@ python scripts/collect_data.py --episode pick_place_001
 
 输出：
 
-- `artifacts/datasets/pick_place_001.npz`
-  - `observations`: 关节状态
-  - `actions`: 控制动作
-  - `timestamps`: 时间戳
-  - `command_ok`: 每步命令是否成功
-  - `images`: RGB 图像（当 `camera.enabled=true`）
+- `artifacts/datasets/pick_place_001.npz`（或 `pick_place_001.hdf5`，取决于配置）
 - `artifacts/datasets/pick_place_001.json`
 
-## D435 配置示例
-
-```yaml
-camera:
-  enabled: true
-  backend: "realsense"
-  width: 640
-  height: 480
-  fps: 30
-  serial_no: null  # 多相机时可填具体序列号
-```
+当 `camera.enabled=true` 时，数据集中会额外保存：
+- `images`：RGB 图像序列（uint8）
+- `image_timestamps`：图像时间戳
 
 ## 2) 训练模型
 
@@ -97,25 +84,34 @@ python scripts/train_policy.py
 python scripts/run_policy.py --model artifacts/models/bc_mlp.pt --steps 300
 ```
 
+如果训练时包含图像特征，部署时也应开启 `camera.enabled=true` 并保持相机分辨率一致。
+
 ## 需要你替换的硬件代码
 
 ### 主动臂（舵机）
 
 在 `ServoLeaderArm.read_joint_degrees()` 里接入你的串口/CAN 总线读数。
 
-### 相机
-
-- `camera.backend=realsense`：使用 Intel RealSense D435。
-- `camera.backend=opencv`：使用普通 USB 相机。
-- 如果你有工业相机 SDK，建议新增 `camera/<your_camera>.py` 并实现 `capture_rgb()`。
-
 ### Realman 从动臂
 
 `RealmanClient` 已支持常见 JSON 字段配置。你可按 Realman 文档微调 payload 与返回字段映射。
 
-## 上传到你的 GitHub 仓库（aloha_zcj 分支）
+### RealSense D435
+
+`RealSenseD435Camera` 默认采集 RGB 流。如果你还需要深度图，可扩展 `capture()` 增加 depth stream。
+
+## 上传到你的 GitHub 仓库
+
+先配置远端，再推送：
 
 ```bash
 git remote add origin <你的仓库URL>
-git push -u origin aloha_zcj
+git push -u origin work
+```
+
+如果你希望推到 `main`：
+
+```bash
+git branch -M main
+git push -u origin main
 ```
