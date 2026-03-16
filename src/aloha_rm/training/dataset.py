@@ -33,7 +33,15 @@ class EpisodeDataset(Dataset[tuple[torch.Tensor, torch.Tensor]]):
                 with h5py.File(path, "r") as data:
                     obs = np.asarray(data["observations"])
                     act = np.asarray(data["actions"])
-                    images = np.asarray(data["images"]) if include_images and "images" in data else None
+                    images = None
+                    if include_images:
+                        if "images" in data:
+                            images = np.asarray(data["images"])
+                        elif "observations" in data and "images" in data["observations"]:
+                            image_group = data["observations"]["images"]
+                            if len(image_group.keys()) > 0:
+                                first_key = sorted(image_group.keys())[0]
+                                images = np.asarray(image_group[first_key])
                     for idx, (o, a) in enumerate(zip(obs, act)):
                         if images is not None:
                             image_flat = images[idx].astype(np.float32).reshape(-1) / 255.0
