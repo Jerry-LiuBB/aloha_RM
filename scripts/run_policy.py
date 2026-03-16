@@ -32,7 +32,8 @@ def main() -> None:
     if cfg.camera.enabled:
         if cfg.camera.model != "realsense_d435":
             raise ValueError(f"Unsupported camera model={cfg.camera.model}")
-        camera = RealSenseD435Camera(width=cfg.camera.width, height=cfg.camera.height, fps=cfg.camera.fps)
+        primary_serial = cfg.camera.serial_no or cfg.camera.wrist_serial_no
+        camera = RealSenseD435Camera(width=cfg.camera.width, height=cfg.camera.height, fps=cfg.camera.fps, serial_no=primary_serial)
 
     obs_dim = np.asarray(follower.get_joint_state()).size
     if cfg.camera.enabled:

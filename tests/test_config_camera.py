@@ -41,6 +41,7 @@ inference:
     cfg = load_config(cfg_file)
     assert cfg.camera.enabled is True
     assert cfg.camera.backend == "realsense"
+    assert cfg.camera.model == "realsense_d435"
     assert cfg.camera.width == 640
     assert cfg.camera.height == 480
     assert cfg.camera.fps == 30

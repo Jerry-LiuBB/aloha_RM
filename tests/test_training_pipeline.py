@@ -93,3 +93,26 @@ def test_hdf5_dataset_loading(tmp_path: Path) -> None:
     assert len(ds) == 16
     sample_obs, _ = ds[0]
     assert sample_obs.numel() == 6 + 8 * 8 * 3
+
+
+def test_hdf5_dataset_loading_mobile_aloha_images(tmp_path: Path) -> None:
+    if not H5PY_AVAILABLE:
+        pytest.skip("h5py is not installed in this environment")
+
+    data_dir = tmp_path / "datasets_h5_mobile"
+    data_dir.mkdir()
+
+    obs = np.random.randn(10, 6).astype(np.float32)
+    act = (obs * 0.5).astype(np.float32)
+    ts = np.linspace(0, 1, 10)
+    images = np.random.randint(0, 255, size=(10, 8, 8, 3), dtype=np.uint8)
+    with h5py.File(data_dir / "ep1.hdf5", "w") as f:
+        f.create_dataset("observations", data=obs)
+        f.create_dataset("actions", data=act)
+        f.create_dataset("timestamps", data=ts)
+        g = f.require_group("observations/images")
+        g.create_dataset("wrist", data=images)
+
+    ds = EpisodeDataset(str(data_dir))
+    sample_obs, _ = ds[0]
+    assert sample_obs.numel() == 6 + 8 * 8 * 3

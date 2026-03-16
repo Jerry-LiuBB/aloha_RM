@@ -52,9 +52,14 @@ class TrainingConfig:
 class CameraConfig:
     enabled: bool = False
     model: str = "realsense_d435"
+    backend: str = "realsense"
     width: int = 640
     height: int = 480
     fps: int = 30
+    serial_no: str | None = None
+    wrist_serial_no: str | None = None
+    external_serial_no: str | None = None
+    base_camera_name: str = "wrist"
 
 @dataclass(slots=True)
 class InferenceConfig:
@@ -82,11 +87,17 @@ def load_config(path: str | Path) -> PipelineConfig:
     with Path(path).open("r", encoding="utf-8") as f:
         raw: dict[str, Any] = yaml.safe_load(f)
 
+    camera_raw = _section(raw, "camera")
+    if "backend" in camera_raw and "model" not in camera_raw:
+        # Backward compatibility with old `backend: realsense` field.
+        camera_raw = dict(camera_raw)
+        camera_raw["model"] = "realsense_d435" if camera_raw["backend"] == "realsense" else camera_raw["backend"]
+
     return PipelineConfig(
         realman=RealmanConfig(**_section(raw, "realman")),
         leader=LeaderConfig(**_section(raw, "leader")),
         collection=CollectionConfig(**_section(raw, "collection")),
         training=TrainingConfig(**_section(raw, "training")),
         inference=InferenceConfig(**_section(raw, "inference")),
-        camera=CameraConfig(**_section(raw, "camera")),
+        camera=CameraConfig(**camera_raw),
     )

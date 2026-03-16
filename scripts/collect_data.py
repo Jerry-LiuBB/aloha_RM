@@ -34,10 +34,17 @@ def main() -> None:
     )
 
     camera = None
+    camera_external = None
     if cfg.camera.enabled:
         if cfg.camera.model != "realsense_d435":
             raise ValueError(f"Unsupported camera model={cfg.camera.model}")
-        camera = RealSenseD435Camera(width=cfg.camera.width, height=cfg.camera.height, fps=cfg.camera.fps)
+        primary_serial = cfg.camera.serial_no or cfg.camera.wrist_serial_no
+        if primary_serial is not None:
+            camera = RealSenseD435Camera(width=cfg.camera.width, height=cfg.camera.height, fps=cfg.camera.fps, serial_no=primary_serial)
+        else:
+            camera = RealSenseD435Camera(width=cfg.camera.width, height=cfg.camera.height, fps=cfg.camera.fps)
+        if cfg.camera.external_serial_no:
+            camera_external = RealSenseD435Camera(width=cfg.camera.width, height=cfg.camera.height, fps=cfg.camera.fps, serial_no=cfg.camera.external_serial_no)
 
     collector = EpisodeCollector(
         leader,
@@ -45,6 +52,8 @@ def main() -> None:
         hz=cfg.collection.hz,
         max_steps=cfg.collection.max_steps,
         camera=camera,
+        secondary_camera=camera_external,
+        base_camera_name=cfg.camera.base_camera_name,
     )
     path = collector.collect(
         args.episode,
