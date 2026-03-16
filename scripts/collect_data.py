@@ -5,6 +5,7 @@ import argparse
 from aloha_rm.config import load_config
 from aloha_rm.follower.realman_client import RealmanClient
 from aloha_rm.leader.servo_leader import ServoLeaderArm
+from aloha_rm.sensors.realsense_camera import RealSenseD435Camera
 from aloha_rm.teleop.collector import EpisodeCollector
 
 
@@ -31,12 +32,26 @@ def main() -> None:
         joint_state_key=cfg.realman.joint_state_key,
         token=cfg.realman.token,
     )
-    collector = EpisodeCollector(leader, follower, hz=cfg.collection.hz, max_steps=cfg.collection.max_steps)
+
+    camera = None
+    if cfg.camera.enabled:
+        if cfg.camera.model != "realsense_d435":
+            raise ValueError(f"Unsupported camera model={cfg.camera.model}")
+        camera = RealSenseD435Camera(width=cfg.camera.width, height=cfg.camera.height, fps=cfg.camera.fps)
+
+    collector = EpisodeCollector(
+        leader,
+        follower,
+        hz=cfg.collection.hz,
+        max_steps=cfg.collection.max_steps,
+        camera=camera,
+    )
     path = collector.collect(
         args.episode,
         cfg.collection.output_dir,
         command_speed=cfg.collection.command_speed,
         command_acc=cfg.collection.command_acc,
+        dataset_format=cfg.collection.dataset_format,
     )
     print(f"saved episode -> {path}")
 
