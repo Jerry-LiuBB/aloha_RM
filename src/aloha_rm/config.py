@@ -33,6 +33,7 @@ class CollectionConfig:
     output_dir: str
     command_speed: float = 20.0
     command_acc: float = 20.0
+    dataset_format: str = "npz"
 
 
 @dataclass(slots=True)
@@ -48,6 +49,14 @@ class TrainingConfig:
 
 
 @dataclass(slots=True)
+class CameraConfig:
+    enabled: bool = False
+    model: str = "realsense_d435"
+    width: int = 640
+    height: int = 480
+    fps: int = 30
+
+@dataclass(slots=True)
 class InferenceConfig:
     hz: int = 30
 
@@ -59,6 +68,7 @@ class PipelineConfig:
     collection: CollectionConfig
     training: TrainingConfig
     inference: InferenceConfig
+    camera: CameraConfig
 
 
 def _section(raw: dict[str, Any], key: str, default: dict[str, Any] | None = None) -> dict[str, Any]:
@@ -78,4 +88,5 @@ def load_config(path: str | Path) -> PipelineConfig:
         collection=CollectionConfig(**_section(raw, "collection")),
         training=TrainingConfig(**_section(raw, "training")),
         inference=InferenceConfig(**_section(raw, "inference")),
+        camera=CameraConfig(**_section(raw, "camera")),
     )
