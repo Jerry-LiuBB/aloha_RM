@@ -1,0 +1,122 @@
+<!doctype html>
+<html lang="zh-CN">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width,initial-scale=1" />
+    <title>统一管理面板</title>
+    <style>
+      body { font-family: sans-serif; margin: 24px; max-width: 780px; }
+      .row { margin: 12px 0; }
+      label { display: inline-block; width: 220px; }
+      input[type="text"], input[type="number"] { width: 360px; }
+      .status { padding: 12px; background: #f3f3f3; border-radius: 6px; margin-top: 16px; }
+      button { margin-right: 10px; }
+    </style>
+  </head>
+  <body>
+    <h2>机器人语音 + 视觉联动面板</h2>
+
+    <div class="row"><label>启用模型服务</label><input id="enableModelService" type="checkbox" checked /></div>
+    <div class="row"><label>画面占比阈值(0~1)</label><input id="personRatioThreshold" type="number" min="0" max="1" step="0.01" value="0.35" /></div>
+    <div class="row"><label>播报文本</label><input id="speakText" type="text" maxlength="50" value="欢迎来到展厅" /></div>
+    <div class="row"><label>循环间隔(秒)</label><input id="speakInterval" type="number" min="0.1" step="0.1" value="3" /></div>
+
+    <div class="row">
+      <button id="startBtn">开始执行</button>
+      <button id="stopBtn">停止播报</button>
+    </div>
+
+    <div class="status">
+      <div>modelStatus: <span id="modelStatus">-</span></div>
+      <div>speakStatus: <span id="speakStatus">-</span></div>
+      <div>decision: <span id="decision">-</span></div>
+      <div>lastError: <span id="lastError">-</span></div>
+    </div>
+
+    <script>
+      let running = false;
+      let loopHandle = null;
+
+      const setText = (id, text) => document.getElementById(id).textContent = String(text);
+      const getValue = (id) => document.getElementById(id).value;
+
+      async function callJson(url, method, body) {
+        const resp = await fetch(url, {
+          method,
+          headers: { 'Content-Type': 'application/json' },
+          body: body ? JSON.stringify(body) : undefined,
+        });
+        if (!resp.ok) {
+          throw new Error(`${url} failed: ${resp.status}`);
+        }
+        return resp.json();
+      }
+
+      async function pollStatus() {
+        try {
+          const data = await callJson('/api/speech/status', 'GET');
+          setText('speakStatus', data.status);
+          return data.status;
+        } catch (err) {
+          setText('lastError', err.message);
+          return 'error';
+        }
+      }
+
+      async function startOnce() {
+        const enableModelService = document.getElementById('enableModelService').checked;
+        const threshold = Number(getValue('personRatioThreshold'));
+        const text = getValue('speakText').trim();
+
+        if (!text) throw new Error('播报文本不能为空');
+
+        if (enableModelService) {
+          setText('modelStatus', 'checking');
+          const det = await callJson('/api/detect/person-decision', 'POST', {
+            person_ratio_threshold: threshold,
+          });
+          setText('decision', det.result);
+          setText('modelStatus', 'done');
+          if (!det.result) return;
+        }
+
+        const play = await callJson('/api/speech/play', 'POST', { text });
+        setText('speakStatus', play.request_status);
+      }
+
+      async function runLoop() {
+        const interval = Number(getValue('speakInterval')) * 1000;
+        while (running) {
+          await startOnce();
+          while (running) {
+            const status = await pollStatus();
+            if (status === 'idle' || status === 'stopped') break;
+            await new Promise((resolve) => setTimeout(resolve, 300));
+          }
+          await new Promise((resolve) => setTimeout(resolve, interval));
+        }
+      }
+
+      document.getElementById('startBtn').addEventListener('click', async () => {
+        if (running) return;
+        running = true;
+        setText('lastError', '-');
+        loopHandle = runLoop().catch((err) => {
+          setText('lastError', err.message);
+          running = false;
+        });
+      });
+
+      document.getElementById('stopBtn').addEventListener('click', async () => {
+        running = false;
+        if (loopHandle) await loopHandle;
+        try {
+          const stop = await callJson('/api/speech/stop', 'POST');
+          setText('speakStatus', stop.request_status);
+        } catch (err) {
+          setText('lastError', err.message);
+        }
+      });
+    </script>
+  </body>
+</html>

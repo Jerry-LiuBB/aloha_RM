@@ -93,3 +93,38 @@ git push -u origin work
 git branch -M main
 git push -u origin main
 ```
+
+## 统一管理 API（语音 + YOLO）
+
+为了满足“前端统一控制语音播报和视觉决策”的需求，新增了一个最小闭环后端和示例前端页面：
+
+- 后端入口：`scripts/run_unified_api.py`
+- 后端实现：`src/aloha_rm/unified_api/`
+- 示例前端：`web/index.html`
+
+### 启动
+
+```bash
+python scripts/run_unified_api.py
+```
+
+默认监听 `0.0.0.0:8080`。
+
+### 接口
+
+- `POST /api/detect/person-decision`
+  - 入参：`{"person_ratio_threshold": 0.35}`
+  - 出参：`{"result": true | false}`
+- `POST /api/speech/play`
+  - 入参：`{"text": "欢迎来到展厅"}`
+  - 出参：`{"success": true, "request_status": "accepted"}`
+- `POST /api/speech/stop`
+  - 出参：`{"success": true, "request_status": "stop_requested" | "idle"}`
+- `GET /api/speech/status`
+  - 出参：`{"status": "idle" | "running" | "stop_requested" | "stopped" | "error"}`
+
+### YOLO 与语音模块接入说明
+
+- YOLO：后端通过 `YoloServiceCaller` 在内部调用本机常驻服务（默认 `http://127.0.0.1:18080/detect`）。
+- 语音：后端通过 `SpeechModuleAdapter` 执行命令行 `speak --text "..."`。
+- 若你们已有工程师提供的正式接口，只需要替换 `services.py` 中对应调用逻辑，不影响前端与主流程。
