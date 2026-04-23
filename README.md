@@ -5,7 +5,8 @@
 ## 功能总览
 
 - 实时遥操作采集：主动臂读关节角、下发 Realman `movej`、回读关节状态。
-- 数据集产出：`npz`（obs/action/timestamp/command_ok）+ `json` 元数据。
+- 可选视觉采集：支持 RealSense D435 RGB 图像采集，并记录图像时间戳。
+- 数据集产出：`npz` 或 `hdf5`（obs/action/timestamp/command_ok，可选 images/image_timestamps）+ `json` 元数据。
 - 训练：行为克隆 MLP，带 train/val 划分和 `metrics.json` 指标导出。
 - 部署：加载模型后按固定频率闭环推理并下发 Realman。
 
@@ -16,7 +17,8 @@
 - `scripts/run_policy.py`：策略部署脚本。
 - `src/aloha_rm/follower/realman_client.py`：Realman JSON API 客户端。
 - `src/aloha_rm/leader/servo_leader.py`：主动臂舵机读数接口（你要接入真实硬件）。
-- `src/aloha_rm/teleop/collector.py`：遥操作采集器。
+- `src/aloha_rm/sensors/realsense_camera.py`：RealSense D435 相机封装。
+- `src/aloha_rm/teleop/collector.py`：遥操作采集器（含机械臂+图像时间戳）。
 - `src/aloha_rm/training/`：数据集、模型、训练。
 - `src/aloha_rm/inference/policy_runner.py`：在线策略运行。
 - `configs/pipeline.yaml`：全局配置。
@@ -29,6 +31,12 @@ source .venv/bin/activate
 pip install -e .
 ```
 
+如需 RealSense D435 支持：
+
+```bash
+pip install -e .[camera]
+```
+
 ## 配置
 
 编辑 `configs/pipeline.yaml`：
@@ -39,6 +47,10 @@ pip install -e .
 - `realman.token`：如有鉴权可填。
 - `leader.joint_count`：主动臂关节数。
 - `collection.command_speed/command_acc`：下发运动参数。
+- `collection.dataset_format`：数据集格式，`npz`（默认）或 `hdf5`（与 mobile-aloha 常见格式一致）。
+- `camera.enabled`：是否启用视觉采集/推理。
+- `camera.model`：当前支持 `realsense_d435`。
+- `camera.width/height/fps`：D435 RGB 流参数。
 
 ## 1) 采集数据
 
@@ -48,8 +60,12 @@ python scripts/collect_data.py --episode pick_place_001
 
 输出：
 
-- `artifacts/datasets/pick_place_001.npz`
+- `artifacts/datasets/pick_place_001.npz`（或 `pick_place_001.hdf5`，取决于配置）
 - `artifacts/datasets/pick_place_001.json`
+
+当 `camera.enabled=true` 时，数据集中会额外保存：
+- `images`：RGB 图像序列（uint8）
+- `image_timestamps`：图像时间戳
 
 ## 2) 训练模型
 
@@ -68,6 +84,8 @@ python scripts/train_policy.py
 python scripts/run_policy.py --model artifacts/models/bc_mlp.pt --steps 300
 ```
 
+如果训练时包含图像特征，部署时也应开启 `camera.enabled=true` 并保持相机分辨率一致。
+
 ## 需要你替换的硬件代码
 
 ### 主动臂（舵机）
@@ -77,6 +95,10 @@ python scripts/run_policy.py --model artifacts/models/bc_mlp.pt --steps 300
 ### Realman 从动臂
 
 `RealmanClient` 已支持常见 JSON 字段配置。你可按 Realman 文档微调 payload 与返回字段映射。
+
+### RealSense D435
+
+`RealSenseD435Camera` 默认采集 RGB 流。如果你还需要深度图，可扩展 `capture()` 增加 depth stream。
 
 ## 上传到你的 GitHub 仓库
 

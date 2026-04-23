@@ -74,13 +74,21 @@ def train_bc(
     out_dir = Path(model_dir)
     out_dir.mkdir(parents=True, exist_ok=True)
     out_path = out_dir / "bc_mlp.pt"
-    torch.save(model.state_dict(), out_path)
+    checkpoint = {
+        "state_dict": model.state_dict(),
+        "obs_dim": int(obs0.numel()),
+        "act_dim": int(act0.numel()),
+        "hidden_dim": int(hidden_dim),
+    }
+    torch.save(checkpoint, out_path)
 
     metrics = {
         "samples": len(dataset),
         "train_samples": len(train_set),
         "val_samples": len(val_set),
         "best_val_loss": best_val,
+        "obs_dim": int(obs0.numel()),
+        "act_dim": int(act0.numel()),
         "history": history,
     }
     with (out_dir / "metrics.json").open("w", encoding="utf-8") as f:
